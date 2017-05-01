@@ -94,6 +94,9 @@ fn try() -> Result<()> {
             }
         }
 
+        // Actually only write how many are available
+        out_frames = frame.samples[0].len();
+
         stream.write(out_frames as u32, |output| {
             for i in 0..out_frames {
                 for j in 0..num_channels {
