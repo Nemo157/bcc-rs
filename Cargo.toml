@@ -1,0 +1,9 @@
+[package]
+authors = ["Wim Looman <wim@nemo157.com>"]
+name = "bcc"
+version = "0.1.0"
+
+[dependencies]
+error-chain = "0.10.0"
+portaudio = "0.7"
+simplemad = "0.8"
