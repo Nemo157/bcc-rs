@@ -45,9 +45,13 @@ fn try() -> Result<()> {
         decoder.next();
     }
 
-    let mut frame = decoder.next().ok_or("No frames")??;
-    let sample_rate = frame.sample_rate;
-    let num_channels = frame.samples.len();
+    let (sample_rate, num_channels, frames) = {
+        let frame = match *decoder.peek().ok_or("No frames")? {
+            Ok(ref frame) => frame,
+            Err(ref err) => panic!(),
+        };
+        (frame.sample_rate, frame.samples.len(), frame.samples[0].len())
+    };
 
     println!("Sample rate: {}", sample_rate);
     println!("Channels : {}", num_channels);
@@ -74,7 +78,7 @@ fn try() -> Result<()> {
     try!(pa.is_output_format_supported(output_params, sample_rate as f64));
 
     // Construct the settings with which we'll open our duplex stream.
-    let settings = pa::OutputStreamSettings::new(output_params, sample_rate as f64, frame.samples[0].len() as u32);
+    let settings = pa::OutputStreamSettings::new(output_params, sample_rate as f64, frames as u32);
 
     let mut stream = pa.open_blocking_stream(settings)?;
 
@@ -82,7 +86,11 @@ fn try() -> Result<()> {
 
     // Now start the main read/write loop! In this example, we pass the input buffer directly to
     // the output buffer, so watch out for feedback.
-    'stream: loop {
+    while let Some(frame) = decoder.next() {
+        let frame = frame?;
+        assert_eq!(sample_rate, frame.sample_rate);
+        assert_eq!(num_channels, frame.samples.len());
+
         // How many frames are available for writing on the output stream?
         let mut out_frames = 0;
         while out_frames < frame.samples[0].len() {
@@ -105,11 +113,8 @@ fn try() -> Result<()> {
             }
             // println!("Wrote {:?} frames to the output stream.", out_frames);
         })?;
-
-        frame = decoder.next().ok_or("No frames")??;
-        assert_eq!(sample_rate, frame.sample_rate);
-        assert_eq!(num_channels, frame.samples.len());
     }
+    Ok(())
 }
 try().unwrap();
 }
